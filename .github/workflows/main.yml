@@ -1,0 +1,77 @@
+name: Deploy MLflow API
+
+ 
+
+on:
+
+  push:
+
+    branches: [ "main" ]
+
+ 
+
+jobs:
+
+  build-and-deploy:
+
+    runs-on: ubuntu-latest
+
+ 
+
+    steps:
+
+      - name: Checkout repo
+
+        uses: actions/checkout@v3
+
+ 
+
+      - name: Set up Python
+
+        uses: actions/setup-python@v4
+
+        with:
+
+          python-version: '3.10'
+
+ 
+
+      - name: Install dependencies
+
+        run: |
+
+          pip install -r requirements.txt
+
+ 
+
+      - name: Train and register model
+
+        run: |
+
+          python train_v2.py
+
+ 
+
+      - name: Build Docker image
+
+        run: |
+
+          docker build -t ghcr.io/${{ github.repository }}/mlflow-deep-api:latest .
+
+ 
+
+      - name: Push to GitHub Container Registry
+
+        run: |
+
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+          docker push ghcr.io/${{ github.repository }}/mlflow-deep-api:latest
+
+ 
+
+      - name: Deploy to server
+
+        run: |
+
+          ssh user@your-server 'docker pull ghcr.io/${{ github.repository }}/mlflow-deep-api:latest && docker stop ml-api || true && docker run -d --rm --name ml-api -p 8000:8000 ghcr.io/${{ github.repository }}/mlflow-deep-api:latest'
